@@ -106,3 +106,4 @@ venv.bak/
 # custom 
 *.ipynb
 notebooks/
+.vscode/
