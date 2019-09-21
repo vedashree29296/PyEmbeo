@@ -1,0 +1,7 @@
+{
+    "python.pythonPath": "/Users/vepatil/miniconda3/envs/embeoj/bin/python",
+    "python.linting.banditEnabled": false,
+    "python.linting.pylintEnabled": false,
+    "python.linting.pylamaEnabled": true,
+    "python.linting.enabled": true
+}
