@@ -1,0 +1,54 @@
+graph_database_config:
+  NEO4J_PASSWORD: test
+  NEO4J_URL: bolt://localhost:7687/
+  NEO4J_USER: neo4j
+
+GLOBAL_CONFIG:
+  PROJECT_NAME: myproject
+  DATA_DIRECTORY: data/
+  CHECKPOINT_DIRECTORY: model/
+  JSON_EXPORT_FILE: graph
+  TSV_FILE_NAME: graph
+  PBG_CONFIG_NAME: config.json
+  TRAIN_SPLIT:
+  EPOCHS: 10
+  EMBEDDING_DIMENSIONS: 400
+
+OPTIONAL_PBG_SETTINGS:
+  operator: complex_diagonal
+  init_scale: 0.001
+  max_norm: null
+  global_emb: True
+  comparator: dot
+  bias: False
+  loss_fn: softmax
+  margin: 0.1
+  init_path: null
+  checkpoint_preservation_interval: null
+  num_edge_chunks: 1
+  bucket_order: inside_out
+  workers: null
+  batch_size: 1000
+  num_batch_negs: 50
+  num_uniform_negs: 1000
+  disable_lhs_negs: False
+  disable_rhs_negs: False
+  lr: 0.1
+  relation_lr: null
+  eval_fraction: 0.0
+  eval_num_batch_negs: 1000
+  eval_num_uniform_negs: 1000
+  background_io: False
+  verbose: 0
+  hogwild_delay: 2.0
+  dynamic_relations: False
+  num_machines: 1
+  num_partition_servers: -1
+  distributed_init_method: null
+  distributed_tree_init_order: True
+
+
+
+
+
+  
