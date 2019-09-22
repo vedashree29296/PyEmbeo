@@ -107,3 +107,6 @@ venv.bak/
 *.ipynb
 notebooks/
 .vscode/
+data/
+model/
+examples/
