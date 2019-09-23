@@ -47,6 +47,13 @@ OPTIONAL_PBG_SETTINGS:
   distributed_init_method: null
   distributed_tree_init_order: True
 
+SIMILARITY_SEARCH_CONFIG:
+  FAISS_INDEX_NAME: IndexIVFFlat
+  INDEX_FILE_NAME: graph.index
+  NUM_CLUSTER: 5
+  NEAREST_NEIGHBORS: 5
+  
+
 
 
 

@@ -9,7 +9,7 @@ import logging
 
 CONFIG_FILE_PATH = "config.yml"
 
-logging.basicConfig(format="%(asctime)s - %(message)s", level=print)
+logging.basicConfig(format="%(asctime)s - %(message)s", level=0)
 logging.info("Logging enabled at INFO")
 
 
