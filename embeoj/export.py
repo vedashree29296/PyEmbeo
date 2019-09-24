@@ -7,6 +7,9 @@ import json
 
 graph_connection = connect_to_graphdb()
 GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
+cwd = os.getcwd()
+DATA_DIRECTORY = os.path.join(cwd, GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"])
+CHECKPOINT_DIRECTORY = os.path.join(cwd, GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"])
 
 
 def create_folders():
@@ -14,10 +17,10 @@ def create_folders():
     """
     try:
         logging.info(f"""CREATING FOLDERS FOR { GLOBAL_CONFIG["PROJECT_NAME"]}...... """)
-        data_path = os.path.join(GLOBAL_CONFIG["DATA_DIRECTORY"], GLOBAL_CONFIG["PROJECT_NAME"])
-        model_path = os.path.join(GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"], GLOBAL_CONFIG["PROJECT_NAME"])
-        os.makedirs(data_path, exist_ok=True)
-        os.makedirs(model_path, exist_ok=True)
+        # data_path = os.path.join(GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"])
+        # model_path = os.path.join(GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"])
+        os.makedirs(DATA_DIRECTORY, exist_ok=True)
+        os.makedirs(CHECKPOINT_DIRECTORY, exist_ok=True)
         logging.info(f"""Done.""")
     except Exception as e:
         logging.info("Could not create project directories")
@@ -28,9 +31,8 @@ def export_graph_to_json():
     """exports the graph database as a jsonl file
     """
     try: 
-        write_directory = os.path.join(GLOBAL_CONFIG["DATA_DIRECTORY"],GLOBAL_CONFIG["PROJECT_NAME"])
         export_file_name = GLOBAL_CONFIG["JSON_EXPORT_FILE"]+".json"
-        graph_file_path = os.path.abspath(os.path.join(write_directory, export_file_name))
+        graph_file_path = os.path.abspath(os.path.join(DATA_DIRECTORY, export_file_name))
         logging.info(f"""EXPORT GRAPH DATABASE TO {graph_file_path}...... """)
         query = f"""CALL apoc.export.json.all('{graph_file_path}'"""+""",{batchSize:500})"""
         graph_connection.run(query)
@@ -64,7 +66,7 @@ def export_meta_data():
         metadata = graph_connection.run(query).to_data_frame()
         relations = list(metadata.to_dict("index").values())    
         entities = list(set(list(metadata["lhs"].unique()) + list(metadata["rhs"].unique())))
-        config = {"entities": {entity: {"num_partitions": 1,"featurized": False} for entity in entities}, "relations": relations}
+        config = {"entities": {entity: {"num_partitions": 2,"featurized": False} for entity in entities}, "relations": relations}
         return config
     except Exception as e:
         logging.info("Could not export graph metadata")
@@ -84,10 +86,10 @@ def build_pbg_config():
         pbg_config = export_meta_data()
         pbg_config["num_epochs"] = GLOBAL_CONFIG["EPOCHS"]
         pbg_config["dimension"] = GLOBAL_CONFIG["EMBEDDING_DIMENSIONS"]
-        pbg_config["entity_path"] = os.path.join(GLOBAL_CONFIG["DATA_DIRECTORY"], GLOBAL_CONFIG["PROJECT_NAME"])
+        pbg_config["entity_path"] = DATA_DIRECTORY
         # change if num of partitions > 1
-        pbg_config["edge_paths"] = [os.path.join(GLOBAL_CONFIG["DATA_DIRECTORY"], GLOBAL_CONFIG["PROJECT_NAME"],GLOBAL_CONFIG["TSV_FILE_NAME"]+"_partitioned")]
-        pbg_config["checkpoint_path"] = os.path.join(GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"], GLOBAL_CONFIG["PROJECT_NAME"])
+        pbg_config["edge_paths"] = [os.path.join(DATA_DIRECTORY,GLOBAL_CONFIG["TSV_FILE_NAME"]+"_partitioned")]
+        pbg_config["checkpoint_path"] = CHECKPOINT_DIRECTORY
         operator = default_config["operator"]
         for relation in pbg_config["relations"]:
             relation["operator"] = operator
@@ -105,7 +107,7 @@ def save_pbg_config():
     try:
         logging.info(f"""SAVING CONFIGURATION FILE ...... """)
         pbg_config = build_pbg_config()
-        model_path = os.path.join(GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"], GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["PBG_CONFIG_NAME"])
+        model_path = os.path.join(CHECKPOINT_DIRECTORY, GLOBAL_CONFIG["PBG_CONFIG_NAME"])
         with open(model_path, "w") as f:
             json.dump(pbg_config, f)
         f.close()

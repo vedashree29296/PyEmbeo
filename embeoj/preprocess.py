@@ -6,7 +6,7 @@ from embeoj.utils import load_config, logging
 from pathlib import os
 
 GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
-json_path = os.path.join(GLOBAL_CONFIG["DATA_DIRECTORY"], GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["JSON_EXPORT_FILE"]+".json")
+json_path = os.path.join(os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"], GLOBAL_CONFIG["JSON_EXPORT_FILE"]+".json")
 
 
 def read_json_file():
@@ -65,7 +65,7 @@ def convert_to_tsv(relation_df):
         relation_df {[Dataframe]} -- Dataframe in above mentioned format
     """
     try:
-        tsv_path = os.path.join(GLOBAL_CONFIG["DATA_DIRECTORY"], GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["TSV_FILE_NAME"]+".tsv")
+        tsv_path = os.path.join(os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"],GLOBAL_CONFIG["DATA_DIRECTORY"], GLOBAL_CONFIG["TSV_FILE_NAME"]+".tsv")
         logging.info(f"WRITING TSV FILE TO {tsv_path}")
         relation_df[["start", "label", "end"]].to_csv(
             tsv_path, sep="\t", header=False, index=False)

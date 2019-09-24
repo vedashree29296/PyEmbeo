@@ -9,13 +9,13 @@ from pathlib import Path, os
 
 GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
 FILENAMES = {
-    'train': os.path.join(GLOBAL_CONFIG["DATA_DIRECTORY"], GLOBAL_CONFIG["PROJECT_NAME"],GLOBAL_CONFIG["TSV_FILE_NAME"]+".tsv")
+    'train': os.path.join(os.getcwd(),GLOBAL_CONFIG["PROJECT_NAME"],GLOBAL_CONFIG["DATA_DIRECTORY"],GLOBAL_CONFIG["TSV_FILE_NAME"]+".tsv")
 }
 
 
 def load_pbg_config():
     try:
-        pbg_config_path = os.path.join(GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"], GLOBAL_CONFIG["PROJECT_NAME"],GLOBAL_CONFIG["PBG_CONFIG_NAME"])
+        pbg_config_path = os.path.join(os.getcwd(),GLOBAL_CONFIG["PROJECT_NAME"],GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"],GLOBAL_CONFIG["PBG_CONFIG_NAME"])
         with open(pbg_config_path) as f:
             pbg_config = f.read()
         f.close()

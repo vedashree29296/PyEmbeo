@@ -127,8 +127,8 @@ def map_back_to_entities(entity_file, indices):
 
 def similarity_search(entity_name):
     try:
-        dimensions = GLOBAL_CONFIG["EMBEDDING_DIMENSIONS"]
-        neighbors = SIMILARITY_SEARCH_CONFIG["NEAREST_NEIGHBORS"]
+        dimensions = GLOBAL_CONFIG["EMBEDDING_DIMENSIONS"]  # get number of dimensions
+        neighbors = SIMILARITY_SEARCH_CONFIG["NEAREST_NEIGHBORS"]  # get number fo nearest neighbours
         # find index of entity id
         entity_file, query_entity_index = return_entity_index(entity_name)
         # check if entity is not found
