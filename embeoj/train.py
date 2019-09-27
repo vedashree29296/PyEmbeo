@@ -3,19 +3,42 @@
 from torchbiggraph.config import parse_config
 from torchbiggraph.converters.import_from_tsv import convert_input_data
 from torchbiggraph.train import train
-from embeoj.utils import load_config, logging
+from torchbiggraph.util import CustomLoggingFormatter
+from embeoj.utils import load_config
 import json
 from pathlib import Path, os
+import sys
+import logging
+
 
 GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
 FILENAMES = {
-    'train': os.path.join(os.getcwd(),GLOBAL_CONFIG["PROJECT_NAME"],GLOBAL_CONFIG["DATA_DIRECTORY"],GLOBAL_CONFIG["TSV_FILE_NAME"]+".tsv")
+    "train": os.path.join(
+        os.getcwd(),
+        GLOBAL_CONFIG["PROJECT_NAME"],
+        GLOBAL_CONFIG["DATA_DIRECTORY"],
+        GLOBAL_CONFIG["TSV_FILE_NAME"] + ".tsv",
+    )
 }
+DATA_DIRECTORY = os.path.join(
+    os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
+)
+CHECKPOINT_DIRECTORY = os.path.join(
+    os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"]
+)
+
+logger = logging.getLogger("torchbiggraph")
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(CustomLoggingFormatter())
+logging.basicConfig(handlers=[handler])
 
 
 def load_pbg_config():
     try:
-        pbg_config_path = os.path.join(os.getcwd(),GLOBAL_CONFIG["PROJECT_NAME"],GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"],GLOBAL_CONFIG["PBG_CONFIG_NAME"])
+        pbg_config_path = os.path.join(
+            CHECKPOINT_DIRECTORY, GLOBAL_CONFIG["PBG_CONFIG_NAME"]
+        )
         with open(pbg_config_path) as f:
             pbg_config = f.read()
         f.close()
@@ -31,12 +54,59 @@ def convert_tsv_to_pbg():
     """Reads the tsv file for the graph data and related files are created for training graph embeddings.
     """
     try:
-        logging.info("-------------------------CREATING FILES FROM TSV FOR TRAINING------------------------")
+        logging.info(
+            "-------------------------CREATING FILES FROM TSV FOR TRAINING------------------------"
+        )
         pbg_config = load_pbg_config()
         edge_paths = [Path(name) for name in FILENAMES.values()]
-        convert_input_data(pbg_config.entities, pbg_config.relations, pbg_config.entity_path, edge_paths, lhs_col=0, rhs_col=2, rel_col=1)
+        convert_input_data(
+            pbg_config.entities,
+            pbg_config.relations,
+            pbg_config.entity_path,
+            edge_paths,
+            lhs_col=0,
+            rhs_col=2,
+            rel_col=1,
+        )
     except Exception as e:
         logging.info("Could not convert to pbg format")
+        logging.info(e, exc_info=True)
+
+
+def merge_entity_name_files():
+    """merges all the json files having entity names to one file called entity_dictionary.json
+    this usually takes place in case of partitions >1 
+    """
+    try:
+        metadata_path = os.path.join(
+            os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], "metadata.json"
+        )
+        with open(metadata_path, "r") as f:
+            metadata = json.load(f)
+        f.close()
+        all_entities = []
+        entity_files = metadata["entity_files"]
+        for entity_file in entity_files:
+            partition_number = int(os.path.splitext(entity_file)[0].split("_")[-1])
+            entity_type = "_".join(
+                os.path.splitext(entity_file)[0]
+                .replace("entity_names_", "")
+                .split("_")[:-1]
+            ).strip("_")
+            entity_file_path = os.path.join(DATA_DIRECTORY, entity_file)
+            entity_data = json.load(open(entity_file_path, "r"))
+            entity_dict = dict(
+                entity_ids=entity_data,
+                entity_type=entity_type,
+                partition_number=partition_number,
+                entity_file=entity_file,
+            )
+            all_entities.append(entity_dict)
+        with open(os.path.join(DATA_DIRECTORY, "entity_dictionary.json"), "w") as f:
+            json.dump(dict(all_entities=all_entities), f)
+        f.close()
+    except Exception as e:
+        logging.info("Could not create a file for all the entities")
         logging.info(e, exc_info=True)
 
 
@@ -47,6 +117,7 @@ def train_embeddings():
     """
     try:
         pbg_config = load_pbg_config()
+        merge_entity_name_files()
         logging.info("-------------------------TRAINING------------------------")
         train(pbg_config)
     except Exception as e:

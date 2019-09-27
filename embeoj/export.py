@@ -8,15 +8,21 @@ import json
 graph_connection = connect_to_graphdb()
 GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
 cwd = os.getcwd()
-DATA_DIRECTORY = os.path.join(cwd, GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"])
-CHECKPOINT_DIRECTORY = os.path.join(cwd, GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"])
+DATA_DIRECTORY = os.path.join(
+    cwd, GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
+)
+CHECKPOINT_DIRECTORY = os.path.join(
+    cwd, GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"]
+)
 
 
 def create_folders():
     """creates folders for storing training data and model checkpoints as mentioned in the config.yml file
     """
     try:
-        logging.info(f"""CREATING FOLDERS FOR { GLOBAL_CONFIG["PROJECT_NAME"]}...... """)
+        logging.info(
+            f"""CREATING FOLDERS FOR { GLOBAL_CONFIG["PROJECT_NAME"]}...... """
+        )
         # data_path = os.path.join(GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"])
         # model_path = os.path.join(GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"])
         os.makedirs(DATA_DIRECTORY, exist_ok=True)
@@ -30,21 +36,67 @@ def create_folders():
 def export_graph_to_json():
     """exports the graph database as a jsonl file
     """
-    try: 
-        export_file_name = GLOBAL_CONFIG["JSON_EXPORT_FILE"]+".json"
-        graph_file_path = os.path.abspath(os.path.join(DATA_DIRECTORY, export_file_name))
+    try:
+        export_file_name = GLOBAL_CONFIG["JSON_EXPORT_FILE"] + ".json"
+        graph_file_path = os.path.abspath(
+            os.path.join(DATA_DIRECTORY, export_file_name)
+        )
         logging.info(f"""EXPORT GRAPH DATABASE TO {graph_file_path}...... """)
-        query = f"""CALL apoc.export.json.all('{graph_file_path}'"""+""",{batchSize:500})"""
+        query = (
+            f"""CALL apoc.export.json.all('{graph_file_path}'"""
+            + """,{batchSize:500})"""
+        )
         graph_connection.run(query)
         if os.path.exists(graph_file_path):
             logging.info("Done")
         else:
             logging.info("export failed! try again!")
     except Exception as e:
-        logging.info("""error in exporting data. 
+        logging.info(
+            """error in exporting data. 
         Possible problemas may include incorrect url and credentials. 
         Or absence of apoc procedures. 
-        Also make sure apoc settings are configured in neo4j.conf""")
+        Also make sure apoc settings are configured in neo4j.conf"""
+        )
+        logging.info(e, exc_info=True)
+
+
+def save_metafile_details(entities):
+    """save details like num of embedding files, number of entity files etc.
+    If partitions are > 1: then there will be 2 entity_name_<label>.json files
+    """
+    try:
+        partitions = list(range(GLOBAL_CONFIG["NUM_PARTITIONS"]))
+        versions = list(range(int(GLOBAL_CONFIG["EPOCHS"])))
+        entity_filenames = [
+            f"entity_names_{e}_{p}.json" for e in entities for p in partitions
+        ]
+        embedding_filenames = [
+            f"embeddings_{e}_{p}.v{version}.json"
+            for e in entities
+            for p in partitions
+            for version in versions
+        ]
+        edge_filenames = [
+            f"graph_partitioned/edges{p}_{p1}.h5"
+            for p in partitions
+            for p1 in partitions
+        ]
+        meta_dict = dict(
+            entities=entities,
+            partitions=GLOBAL_CONFIG["NUM_PARTITIONS"],
+            entity_files=entity_filenames,
+            embedding_files=embedding_filenames,
+            edge_files=edge_filenames,
+        )
+        metadata_path = os.path.join(
+            os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], "metadata.json"
+        )
+        with open(metadata_path, "w") as f:
+            json.dump(meta_dict, f)
+        f.close()
+    except Exception as e:
+        logging.info("""error in exporting meta data. """)
         logging.info(e, exc_info=True)
 
 
@@ -64,9 +116,19 @@ def export_meta_data():
         WITH DISTINCT {l1: labels(n), r: type(r), l2: labels(x)} AS connect 
         RETURN head(connect.l1) as lhs,connect.r as name,head(connect.l2) as rhs"""
         metadata = graph_connection.run(query).to_data_frame()
-        relations = list(metadata.to_dict("index").values())    
-        entities = list(set(list(metadata["lhs"].unique()) + list(metadata["rhs"].unique())))
-        config = {"entities": {entity: {"num_partitions": 2,"featurized": False} for entity in entities}, "relations": relations}
+        relations = list(metadata.to_dict("index").values())
+        entities = list(
+            set(list(metadata["lhs"].unique()) + list(metadata["rhs"].unique()))
+        )
+        partitions = GLOBAL_CONFIG["NUM_PARTITIONS"]
+        config = {
+            "entities": {
+                entity: {"num_partitions": partitions, "featurized": False}
+                for entity in entities
+            },
+            "relations": relations,
+        }
+        save_metafile_details(entities)
         return config
     except Exception as e:
         logging.info("Could not export graph metadata")
@@ -88,7 +150,11 @@ def build_pbg_config():
         pbg_config["dimension"] = GLOBAL_CONFIG["EMBEDDING_DIMENSIONS"]
         pbg_config["entity_path"] = DATA_DIRECTORY
         # change if num of partitions > 1
-        pbg_config["edge_paths"] = [os.path.join(DATA_DIRECTORY,GLOBAL_CONFIG["TSV_FILE_NAME"]+"_partitioned")]
+        pbg_config["edge_paths"] = [
+            os.path.join(
+                DATA_DIRECTORY, GLOBAL_CONFIG["TSV_FILE_NAME"] + "_partitioned"
+            )
+        ]
         pbg_config["checkpoint_path"] = CHECKPOINT_DIRECTORY
         operator = default_config["operator"]
         for relation in pbg_config["relations"]:
@@ -107,7 +173,9 @@ def save_pbg_config():
     try:
         logging.info(f"""SAVING CONFIGURATION FILE ...... """)
         pbg_config = build_pbg_config()
-        model_path = os.path.join(CHECKPOINT_DIRECTORY, GLOBAL_CONFIG["PBG_CONFIG_NAME"])
+        model_path = os.path.join(
+            CHECKPOINT_DIRECTORY, GLOBAL_CONFIG["PBG_CONFIG_NAME"]
+        )
         with open(model_path, "w") as f:
             json.dump(pbg_config, f)
         f.close()
@@ -121,7 +189,9 @@ def export():
     """entry function for exporting graph data and creating PBG config.
     """
     try:
-        logging.info("-------------------------PREPARING FOR DATA EXPORT------------------------")
+        logging.info(
+            "-------------------------PREPARING FOR DATA EXPORT------------------------"
+        )
         create_folders()
         export_graph_to_json()
         save_pbg_config()

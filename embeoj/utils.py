@@ -7,10 +7,8 @@ from yaml.loader import Loader
 import logging
 
 
-CONFIG_FILE_PATH = "config.yml"
-
-logging.basicConfig(format="%(asctime)s - %(message)s", level=0)
-logging.info("Logging enabled at INFO")
+CONFIG_FILE_PATH = "./config.yml"
+logging.basicConfig(format="%(asctime)s - %(message)s", level=20)
 
 
 def load_config(subconfig_name: str = None):
@@ -32,7 +30,7 @@ def load_config(subconfig_name: str = None):
             return subconfig
         return config
     except Exception as e:
-        print(f"Error in loading config file : {e}")
+        logging.info(f"Error in loading config : {e}", exc_info=True)
 
 
 def connect_to_graphdb():
@@ -45,9 +43,25 @@ def connect_to_graphdb():
         url = graph_config["NEO4J_URL"]
         username = graph_config["NEO4J_USER"]
         password = graph_config["NEO4J_PASSWORD"]
-        graph_db = Graph(url,
-                         user=username,
-                         password=password)
+        graph_db = Graph(url, user=username, password=password)
         return graph_db
     except Exception as e:
-        print(f"Error in connecting to graph database : {e}")
+        logging.info(f"Error in connecting to graph database : {e}", exc_info=True)
+
+
+def update_config(**kwargs):
+    try:
+        logging.info("-----------------UPDATING CONFIG-----------------")
+        default_config = load_config()
+        for key, value in kwargs.items():
+            if default_config["GLOBAL_CONFIG"].get(key.upper()):
+                default_config["GLOBAL_CONFIG"][key.upper()] = value
+            elif default_config["GRAPH_DATABASE"].get(key.upper()):
+                default_config["GRAPH_DATABASE"][key.upper()] = value
+            elif default_config.get(key):
+                default_config[key] = value
+        with open(CONFIG_FILE_PATH, "w") as f:
+            yaml.dump(default_config, f)
+        logging.info("Done....")
+    except Exception as e:
+        logging.info(f"Error in updating config : {e}", exc_info=True)
