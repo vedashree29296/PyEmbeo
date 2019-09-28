@@ -1,0 +1,14 @@
+name: pyembeo
+dependencies:
+  - python>=3.5
+  - faiss-cpu=1.5.3
+  - pip
+  - pip:
+      - pandas==0.25.0
+      - torchbiggraph==1.dev1
+      - setuptools==41.1.0
+      - py2neo
+      - pyyaml==5.1.2
+channels:
+  - pytorch
+  - conda-forge

@@ -3,7 +3,6 @@
 from torchbiggraph.config import parse_config
 from torchbiggraph.converters.import_from_tsv import convert_input_data
 from torchbiggraph.train import train
-from torchbiggraph.util import CustomLoggingFormatter
 from embeoj.utils import load_config
 import json
 from pathlib import Path, os
@@ -30,7 +29,7 @@ CHECKPOINT_DIRECTORY = os.path.join(
 logger = logging.getLogger("torchbiggraph")  # log to stout
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(CustomLoggingFormatter())
+# handler.setFormatter(CustomLoggingFormatter())
 logging.basicConfig(handlers=[handler])
 
 
@@ -93,14 +92,18 @@ def merge_entity_name_files():
             metadata = json.load(f)
         f.close()
         all_entities = []
-        entity_files = metadata["entity_files"] # get a list of all json files having entities' ids
+        entity_files = metadata[
+            "entity_files"
+        ]  # get a list of all json files having entities' ids
         for entity_file in entity_files:
             partition_number = int(os.path.splitext(entity_file)[0].split("_")[-1])
             entity_type = "_".join(
                 os.path.splitext(entity_file)[0]
                 .replace("entity_names_", "")
                 .split("_")[:-1]
-            ).strip("_")  # find the entity type
+            ).strip(
+                "_"
+            )  # find the entity type
             entity_file_path = os.path.join(DATA_DIRECTORY, entity_file)
             entity_data = json.load(open(entity_file_path, "r"))
             entity_dict = dict(
