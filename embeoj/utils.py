@@ -49,6 +49,19 @@ def connect_to_graphdb():
         logging.info(f"Error in connecting to graph database : {e}", exc_info=True)
 
 
+def test_db_connection():
+    try:
+        logging.info("CONNECTING TO DATABASE.........")
+        graph_connection = connect_to_graphdb()
+        graph_connection.run("call db.schema")
+        return True
+    except Exception as e:
+        logging.info(
+            f"Could not connect to Database. Please check your credentials:\n{e}"
+        )
+        return False
+
+
 def update_config(**kwargs):
     try:
         logging.info("-----------------UPDATING CONFIG-----------------")

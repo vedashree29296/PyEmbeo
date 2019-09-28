@@ -6,25 +6,26 @@ from pathlib import os
 import json
 
 graph_connection = connect_to_graphdb()
+
 GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
-cwd = os.getcwd()
+cwd = os.getcwd()  # get current directory
+# default myproject/data
 DATA_DIRECTORY = os.path.join(
     cwd, GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
 )
+# default myproject/model
 CHECKPOINT_DIRECTORY = os.path.join(
     cwd, GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"]
 )
 
 
 def create_folders():
-    """creates folders for storing training data and model checkpoints as mentioned in the config.yml file
+    """creates folders for storing training data and model checkpoints as per the config.yml file
     """
     try:
         logging.info(
             f"""CREATING FOLDERS FOR { GLOBAL_CONFIG["PROJECT_NAME"]}...... """
         )
-        # data_path = os.path.join(GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"])
-        # model_path = os.path.join(GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"])
         os.makedirs(DATA_DIRECTORY, exist_ok=True)
         os.makedirs(CHECKPOINT_DIRECTORY, exist_ok=True)
         logging.info(f"""Done.""")
@@ -34,21 +35,23 @@ def create_folders():
 
 
 def export_graph_to_json():
-    """exports the graph database as a jsonl file
+    """exports the graph database as a json file
     """
     try:
         export_file_name = GLOBAL_CONFIG["JSON_EXPORT_FILE"] + ".json"
         graph_file_path = os.path.abspath(
-            os.path.join(DATA_DIRECTORY, export_file_name)
+            os.path.join(
+                DATA_DIRECTORY, export_file_name
+            )  # default:  myproject/data/graph.json
         )
-        logging.info(f"""EXPORT GRAPH DATABASE TO {graph_file_path}...... """)
+        logging.info(f"""EXPORTING GRAPH DATABASE TO {graph_file_path}...... """)
         query = (
             f"""CALL apoc.export.json.all('{graph_file_path}'"""
             + """,{batchSize:500})"""
         )
         graph_connection.run(query)
         if os.path.exists(graph_file_path):
-            logging.info("Done")
+            logging.info("Done...")
         else:
             logging.info("export failed! try again!")
     except Exception as e:
@@ -62,36 +65,38 @@ def export_graph_to_json():
 
 
 def save_metafile_details(entities):
-    """save details like num of embedding files, number of entity files etc.
-    If partitions are > 1: then there will be 2 entity_name_<label>.json files
-    """
+    """Save details like num of embedding files, number of entity files etc.
+    If partitions are > 1: then there will be 2 entity_name_<label>.json files"""
+
     try:
-        partitions = list(range(GLOBAL_CONFIG["NUM_PARTITIONS"]))
-        versions = list(range(int(GLOBAL_CONFIG["EPOCHS"])))
+        partitions = list(
+            range(GLOBAL_CONFIG["NUM_PARTITIONS"])
+        )  # number of data partitions default = 1
+        versions = list(range(int(GLOBAL_CONFIG["EPOCHS"])))  # final embedding version
         entity_filenames = [
             f"entity_names_{e}_{p}.json" for e in entities for p in partitions
-        ]
+        ]  # entity filenames stored are in format : entity_names_0_0.json for number of partitions
         embedding_filenames = [
             f"embeddings_{e}_{p}.v{version}.json"
             for e in entities
             for p in partitions
             for version in versions
-        ]
+        ]  # embedding filenames stored are in format : embeddings_0_0.json for number of partitions
         edge_filenames = [
             f"graph_partitioned/edges{p}_{p1}.h5"
             for p in partitions
             for p1 in partitions
-        ]
+        ]  # edge files are stored are in format : edges_0_0.json for number of partitions
         meta_dict = dict(
             entities=entities,
             partitions=GLOBAL_CONFIG["NUM_PARTITIONS"],
             entity_files=entity_filenames,
             embedding_files=embedding_filenames,
             edge_files=edge_filenames,
-        )
+        )  # metadata for all these files
         metadata_path = os.path.join(
             os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], "metadata.json"
-        )
+        )  # save to myproject/metadata.json
         with open(metadata_path, "w") as f:
             json.dump(meta_dict, f)
         f.close()
@@ -105,7 +110,6 @@ def export_meta_data():
     This is then saved in the PBG config
     Note: By  default, PBG accepts only one label per node. 
     Hence the first label is picked by default. 
-    (Will come up with an alternate soon!)
 
     Returns:
         [dict] -- [a basic dictionary specifying the types of entities and labels according to PBG format]
@@ -116,10 +120,10 @@ def export_meta_data():
         WITH DISTINCT {l1: labels(n), r: type(r), l2: labels(x)} AS connect 
         RETURN head(connect.l1) as lhs,connect.r as name,head(connect.l2) as rhs"""
         metadata = graph_connection.run(query).to_data_frame()
-        relations = list(metadata.to_dict("index").values())
+        relations = list(metadata.to_dict("index").values())  # all relations
         entities = list(
             set(list(metadata["lhs"].unique()) + list(metadata["rhs"].unique()))
-        )
+        )  # unique names of entities
         partitions = GLOBAL_CONFIG["NUM_PARTITIONS"]
         config = {
             "entities": {
@@ -143,9 +147,8 @@ def build_pbg_config():
     """
     try:
         logging.info(f"""CREATING CONFIGURATION FILE ...... """)
-
         default_config = load_config("OPTIONAL_PBG_SETTINGS")
-        pbg_config = export_meta_data()
+        pbg_config = export_meta_data(graph_connection)
         pbg_config["num_epochs"] = GLOBAL_CONFIG["EPOCHS"]
         pbg_config["dimension"] = GLOBAL_CONFIG["EMBEDDING_DIMENSIONS"]
         pbg_config["entity_path"] = DATA_DIRECTORY
@@ -158,9 +161,12 @@ def build_pbg_config():
         pbg_config["checkpoint_path"] = CHECKPOINT_DIRECTORY
         operator = default_config["operator"]
         for relation in pbg_config["relations"]:
-            relation["operator"] = operator
-        pbg_config = {**pbg_config, **default_config}
-        del pbg_config["operator"]
+            relation["operator"] = operator  # adds operator for each relation
+        pbg_config = {
+            **pbg_config,
+            **default_config,
+        }  # merge the default and added config
+        del pbg_config["operator"]  # removes extra key from config to avoid error
         return pbg_config
     except Exception as e:
         logging.info("Could not create pbg config")
@@ -192,9 +198,9 @@ def export():
         logging.info(
             "-------------------------PREPARING FOR DATA EXPORT------------------------"
         )
-        create_folders()
-        export_graph_to_json()
-        save_pbg_config()
+        create_folders()  # create neccesary folders
+        export_graph_to_json()  # export graph to json
+        save_pbg_config()  # create and save config.json for training
         logging.info("Done....")
     except Exception as e:
         logging.info("error in export")
