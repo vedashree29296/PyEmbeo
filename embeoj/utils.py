@@ -5,6 +5,7 @@ from py2neo import Graph
 import yaml
 from yaml.loader import Loader
 import logging
+from pathlib import os
 
 
 CONFIG_FILE_PATH = "./config.yml"
@@ -78,3 +79,26 @@ def update_config(**kwargs):
         logging.info("Done....")
     except Exception as e:
         logging.info(f"Error in updating config : {e}", exc_info=True)
+
+
+def get_checkpoint_version():
+    """returns the latest version of the embeddings
+
+    Returns:
+        [int] -- version of the embeddings
+    """
+    try:
+        GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
+        checkpoint_version_file = os.path.join(
+            GLOBAL_CONFIG["PROJECT_NAME"],
+            GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"],
+            "checkpoint_version.txt",
+        )
+        with open(checkpoint_version_file, "r") as f:
+            version = f.read()
+        f.close()
+        version = int(version.split()[0].strip())
+        logging.info(f"Latest checkpoint version: {version}")
+        return version
+    except Exception as e:
+        logging.error(f"Could locate checkpoint version file: {e}", exc_info=True)

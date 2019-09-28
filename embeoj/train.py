@@ -19,7 +19,7 @@ FILENAMES = {
         GLOBAL_CONFIG["DATA_DIRECTORY"],
         GLOBAL_CONFIG["TSV_FILE_NAME"] + ".tsv",
     )
-}
+}  # path to tsv file with train data
 DATA_DIRECTORY = os.path.join(
     os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
 )
@@ -27,7 +27,7 @@ CHECKPOINT_DIRECTORY = os.path.join(
     os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"]
 )
 
-logger = logging.getLogger("torchbiggraph")
+logger = logging.getLogger("torchbiggraph")  # log to stout
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler(sys.stdout)
 handler.setFormatter(CustomLoggingFormatter())
@@ -35,6 +35,11 @@ logging.basicConfig(handlers=[handler])
 
 
 def load_pbg_config():
+    """ reads config.json file and creates a schema object  for the config
+    
+    Returns:
+        [object] -- Config Schema object for the json file
+    """
     try:
         pbg_config_path = os.path.join(
             CHECKPOINT_DIRECTORY, GLOBAL_CONFIG["PBG_CONFIG_NAME"]
@@ -48,6 +53,7 @@ def load_pbg_config():
     except Exception as e:
         logging.info("Could not convert to pbg format")
         logging.info(e, exc_info=True)
+        sys.exit(e)
 
 
 def convert_tsv_to_pbg():
@@ -71,28 +77,30 @@ def convert_tsv_to_pbg():
     except Exception as e:
         logging.info("Could not convert to pbg format")
         logging.info(e, exc_info=True)
+        sys.exit(e)
 
 
 def merge_entity_name_files():
-    """merges all the json files having entity names to one file called entity_dictionary.json
-    this usually takes place in case of partitions >1 
+    """merges all the json files having entity names and their ids to one file called entity_dictionary.json
+    this usually takes place in case number of partitions >1.
+    This can then be used for other downstream tasks 
     """
     try:
         metadata_path = os.path.join(
             os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], "metadata.json"
-        )
+        )  # read metadata
         with open(metadata_path, "r") as f:
             metadata = json.load(f)
         f.close()
         all_entities = []
-        entity_files = metadata["entity_files"]
+        entity_files = metadata["entity_files"] # get a list of all json files having entities' ids
         for entity_file in entity_files:
             partition_number = int(os.path.splitext(entity_file)[0].split("_")[-1])
             entity_type = "_".join(
                 os.path.splitext(entity_file)[0]
                 .replace("entity_names_", "")
                 .split("_")[:-1]
-            ).strip("_")
+            ).strip("_")  # find the entity type
             entity_file_path = os.path.join(DATA_DIRECTORY, entity_file)
             entity_data = json.load(open(entity_file_path, "r"))
             entity_dict = dict(
@@ -100,7 +108,7 @@ def merge_entity_name_files():
                 entity_type=entity_type,
                 partition_number=partition_number,
                 entity_file=entity_file,
-            )
+            )  # creates a dict object for one partition
             all_entities.append(entity_dict)
         with open(os.path.join(DATA_DIRECTORY, "entity_dictionary.json"), "w") as f:
             json.dump(dict(all_entities=all_entities), f)
@@ -111,9 +119,9 @@ def merge_entity_name_files():
 
 
 def train_embeddings():
-    """ Carry out training for generating embeddings
+    """ Train function for generating embeddings
     Arguments:
-        pbg_config {[type]} -- [description]
+        pbg_config {[object]} -- [config object]
     """
     try:
         pbg_config = load_pbg_config()
@@ -123,3 +131,4 @@ def train_embeddings():
     except Exception as e:
         logging.info("error in training")
         logging.info(e, exc_info=True)
+        sys.exit(e)

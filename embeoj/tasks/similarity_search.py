@@ -1,19 +1,11 @@
-import faiss
 import json
 from pathlib import os
-import h5py
-from embeoj.utils import load_config, logging
+from embeoj.utils import load_config, logging, connect_to_graphdb
+from embeoj.tasks.index import create_indexes, search_all
+import sys
 import re
 
-# graph_connection = connect_to_graphdb()
-SIMILARITY_SEARCH_CONFIG = load_config("SIMILARITY_SEARCH_CONFIG")
 GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
-index_path = os.path.join(
-    os.getcwd(),
-    GLOBAL_CONFIG["PROJECT_NAME"],
-    GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"],
-    SIMILARITY_SEARCH_CONFIG["INDEX_FILE_NAME"],
-)
 DATA_DIRECTORY = os.path.join(
     os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
 )
@@ -21,195 +13,131 @@ CHECKPOINT_DIRECTORY = os.path.join(
     os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"]
 )
 
+graph_connection = connect_to_graphdb()
 
-def create_faiss_index(index_name: str):
-    """[summary]
+
+def find_node(entity_id):
+    """ Queries the graph to find the node having a particular id.
+      If the the id is not found, then a brute force query is sent to find the node 
+      where some property matches with the node id
     
     Arguments:
-        index_name {str} -- [description]
+        entity_id {[str]} -- id of the node to be searched
     
     Returns:
-        [type] -- [description]
+        [dict] -- node with the given id that is found
     """
+
     try:
-        dimensions = GLOBAL_CONFIG["EMBEDDING_DIMENSIONS"]
-        nlist = SIMILARITY_SEARCH_CONFIG["NUM_CLUSTER"]
-        if index_name == "IndexIVFFlat":
-            quantizer = faiss.IndexFlatL2(dimensions)
-            index = faiss.IndexIVFFlat(quantizer, dimensions, nlist)
-        elif index_name == "IndexFlatL2":
-            index = faiss.IndexFlatL2(dimensions)
-        return index
+        if not re.findall("[a-zA-Z]", entity_id):
+            query = f""" MATCH (n) where id(n)= {entity_id} or id(n)= '{entity_id}' 
+            return head(labels(n)) as entity_type,n as node, id(n) as entity_id limit 1"""
+            entity = graph_connection.run(query).to_data_frame()
+            if not entity.empty:
+                entity = entity.iloc[0].to_dict()
+                entity["node"] = dict(entity["node"])
+                logging.info(f"ENTITY FOUND : {entity}")
+                return entity
+        brute_query = f""" match (n)
+        with n, [x in keys(n) WHERE n[x]="{entity_id}"] AS doesMatch
+        where size(doesMatch) > 0
+        return id(n) as id,head(labels(n)) as entity_type,
+        id(n) as entity_id, n as node limit 1"""
+        entity = graph_connection.run(brute_query).to_data_frame().dropna()
+        if not entity.empty:
+            entity = entity.iloc[0].to_dict()
+            entity["node"] = dict(entity["node"])
+            logging.info(f"ENTITY FOUND : {entity}")
+            return entity
+        logging.error(f"Could not find node")
     except Exception as e:
-        logging.error(f"Could not create index: {e}", exc_info=True)
+        logging.error(f"Node does not exists : {e}", exc_info=True)
+        sys.exit(e)
 
 
-def get_checkpoint_version():
-    """returns the latest version of the embeddings 
+def find_entity_data(entity_id):
+    """ Reads the entity_dictionary.json containing ids of all nodes  to locate the index of the entity
+    
+    Arguments:
+        entity_id {[str]} -- id of the node to be searched
     
     Returns:
-        [int] -- version of the embeddings
+        [dict] -- dict specifying partition number index of the entity and the file
     """
+
     try:
-        checkpoint_version_file = os.path.join(
-            GLOBAL_CONFIG["PROJECT_NAME"],
-            GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"],
-            "checkpoint_version.txt",
-        )
-        with open(checkpoint_version_file, "r") as f:
-            version = f.read()
+        entity = find_node(entity_id)
+        entity_type = entity["entity_type"]
+        entity_id = str(entity["entity_id"])
+        with open(os.path.join(DATA_DIRECTORY, "entity_dictionary.json"), "r") as f:
+            all_entity_dictionary = json.load(f)
         f.close()
-        version = int(version.split()[0].strip())
-        logging.info(f"Latest checkpoint version: {version}")
-        return version
-    except Exception as e:
-        logging.error(f"Could locate checkpoint version file: {e}", exc_info=True)
-
-
-def read_embeddings(entity_file):
-    """[summary]
-    
-    Arguments:
-        entity_file {[type]} -- [description]
-    
-    Returns:
-        [type] -- [description]
-    """
-    try:
-        version = get_checkpoint_version()
-        entity_type = "_".join(entity_file.split("_")[2:-1]).strip("_")
-        partition_no = os.path.splitext(entity_file)[0].split("_")[-1]
-        embedding_file = f"embeddings_{entity_type}_{partition_no}.v{version}.h5"
-        logging.info(f"embedding file name: {embedding_file}")
-        embeddings_path = os.path.join(
-            GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"],
-            GLOBAL_CONFIG["PROJECT_NAME"],
-            embedding_file,
+        entity_dictionaries = [
+            ent
+            for ent in all_entity_dictionary["all_entities"]
+            if ent["entity_type"] == entity_type
+        ]  # get all the dictionaries where the entity label is found
+        entity_dictionary = [
+            entity_dict
+            for entity_dict in entity_dictionaries
+            if entity_id in entity_dict["entity_ids"]
+        ][0]
+        entity_index = entity_dictionary["entity_ids"].index(entity_id)
+        partition_number = int(entity_dictionary["partition_number"])
+        entity_file = entity_dictionary["entity_file"]
+        return dict(
+            entity_index=entity_index,
+            partition_number=partition_number,
+            entity_file=entity_file,
+            entity_type=entity_type,
         )
-        with h5py.File(embeddings_path, "r") as hf:
-            embeddings = hf["embeddings"][...]
-        hf.close()
-        return embeddings
     except Exception as e:
-        logging.info(f"error in reading embedding h5 file: {e}", exc_info=True)
+        logging.error(f"Could not locate data for node : {e}", exc_info=True)
+        sys.exit(e)
 
 
-def save_index(entity_file):
-    try:
-        index_name = SIMILARITY_SEARCH_CONFIG["FAISS_INDEX_NAME"]
-        index = create_faiss_index(index_name)
-        embeddings = read_embeddings(entity_file)
-        if index_name == "IndexIVFFlat":
-            index.train(embeddings)
-        index.add(embeddings)
-        faiss.write_index(index, index_path)
-        return index
-    except Exception as e:
-        logging.info(f"error in index creation: {e}", exc_info=True)
-
-
-def load_index(entity_file):
-    try:
-        if os.path.exists(index_path):
-            logging.info(f"reading index file: {index_path}")
-            index = faiss.read_index(index_path)
-            return index
-        else:
-            save_index(entity_file)
-            return index
-    except Exception as e:
-        logging.error(f"Error in Indexing : {e}", exc_info=True)
-
-
-def read_metadata_files():
-    try:
-        data_directory = os.path.join(
-            GLOBAL_CONFIG["PROJECT_NAME"],
-            GLOBAL_CONFIG["DATA_DIRECTORY"],
-            "metadata.json",
+def map_back_to_entities(entity_file_list, search_result, neighbors):
+    count = 1
+    all_similar_ents = list()
+    for result in search_result:
+        entity_file_list_index = int(result[-1] / neighbors)
+        similar_entity_index = int(result[0])
+        similar_entity_distance = result[1]
+        if similar_entity_distance == 0:
+            continue
+        entity_filename = (
+            f"entity_names_{entity_file_list[entity_file_list_index]}.json"
         )
-        metadata_path = os.path.join(data_directory, "metadata.json")
-        metadata = json.load(open(metadata_path, "r"))
-        entity_files = metadata["entity_files"]
+        entity_filepath = os.path.join(DATA_DIRECTORY, entity_filename)
+        node_list = json.load(open(entity_filepath, "r"))
+        similar_entity_id = node_list[similar_entity_index]
+        similar_entity = find_node(similar_entity_id)
+        similar_entity["distance"] = similar_entity_distance
+        count += 1
+        all_similar_ents.append(similar_entity)
+        if count == neighbors:
+            break
+    return all_similar_ents
 
-    except Exception as e:
-        logging.error(f"Error in Indexing : {e}", exc_info=True)
 
-
-def return_entity_index(entity_id):
+def similarity_search(entity_id):
     try:
-        data_directory = os.path.join(
-            GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
-        )
-        # read entity files having name as entity_names_<entityname>_<partition_no>.json
-        logging.info(data_directory)
-        logging.info(os.listdir(data_directory))
-        entity_files = [
-            re.findall("entity_names_[a-zA-Z]*[_][0-9]{1,2}.json", filename)
-            for filename in os.listdir(data_directory)
-        ]
-        entity_files = [f[0] for f in entity_files if f]
-        logging.info(entity_files)
-        # read entity names
-        for entity_file in entity_files:
-            with open(os.path.join(data_directory, entity_file), "rt") as tf:
-                entity_names = json.load(tf)
-                query_entity_index = entity_names.index(entity_id)
-            tf.close()
-            # entity found
-            if query_entity_index is not None:
-                # a dumb way to get the type find a better way
-                logging.info(
-                    f"entity found in {entity_file} at index {query_entity_index}"
-                )
-                return entity_file, query_entity_index
-        # if a global dictionary exists in case an "all" entity is given
-        with open(os.path.join(data_directory, "dictionary.json"), "rt") as tf:
-            entity_names = json.load(tf)["entities"]["all"]
-            query_entity_index = entity_names.index(entity_id)
-        tf.close()
-        if query_entity_index is not None:
-            return "dictionary.json", query_entity_index
-        return None
-    except Exception as e:
-        logging.error(f"Error in Indexing : {e}", exc_info=True)
-
-
-def map_back_to_entities(entity_file, indices):
-    try:
-        data_directory = os.path.join(
-            GLOBAL_CONFIG["DATA_DIRECTORY"], GLOBAL_CONFIG["PROJECT_NAME"]
-        )
-        with open(os.path.join(data_directory, entity_file), "rt") as tf:
-            entity_names = json.load(tf)
-        tf.close()
-        mapped_entities = [entity_names[index] for index in list(indices[0])]
-        return mapped_entities
-    except Exception as e:
-        logging.error(f"Error in mapping back to entities : {e}", exc_info=True)
-
-
-def similarity_search(entity_name):
-    try:
-        dimensions = GLOBAL_CONFIG["EMBEDDING_DIMENSIONS"]  # get number of dimensions
-        neighbors = SIMILARITY_SEARCH_CONFIG[
-            "NEAREST_NEIGHBORS"
-        ]  # get number fo nearest neighbours
+        create_indexes()  # create indexes if not present
+        entity_details = find_entity_data(entity_id)
+        entity_type = entity_details["entity_type"]
+        partition_number = entity_details["partition_number"]
         # find index of entity id
-        entity_file, query_entity_index = return_entity_index(entity_name)
-        # check if entity is not found
-        if query_entity_index is None:
-            logging.info("Couldn't find the entity you were searching for")
-            return
-        # get embedding from h5 file for entity
-        embeddings = read_embeddings(entity_file)
-        query_entity_embedding = embeddings[query_entity_index, :]
-        query_entity_embedding = query_entity_embedding.reshape((1, dimensions))
-        index = load_index(entity_file)
-        # search in faiss
-        distances, indices = index.search(query_entity_embedding, neighbors)
-        logging.info(indices)
-        mapped_entities = map_back_to_entities(entity_file, indices)
-        logging.info(f"mapped_entities: {mapped_entities}")
+        query_index = entity_details["entity_index"]
+        search_result, entity_file_list, neighbors = search_all(
+            entity_type, partition_number, query_index
+        )
+        logging.info(search_result)
+        logging.info(entity_file_list)
+        all_similar_ents = map_back_to_entities(
+            entity_file_list, search_result, neighbors
+        )
+        logging.info(all_similar_ents)
+
     except Exception as e:
-        logging.error(f"Error in Indexing : {e}", exc_info=True)
+        logging.error(f"Error in search : {e}", exc_info=True)
+        sys.exit(e)

@@ -4,6 +4,7 @@ import json
 import pandas as pd
 from embeoj.utils import load_config, logging
 from pathlib import os
+import sys
 
 GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
 json_path = os.path.join(
@@ -11,7 +12,7 @@ json_path = os.path.join(
     GLOBAL_CONFIG["PROJECT_NAME"],
     GLOBAL_CONFIG["DATA_DIRECTORY"],
     GLOBAL_CONFIG["JSON_EXPORT_FILE"] + ".json",
-)
+)  # path to the json dump of the graph db
 
 
 def read_json_file():
@@ -75,7 +76,7 @@ def convert_to_tsv(relation_df):
             GLOBAL_CONFIG["PROJECT_NAME"],
             GLOBAL_CONFIG["DATA_DIRECTORY"],
             GLOBAL_CONFIG["TSV_FILE_NAME"] + ".tsv",
-        )
+        )  # default myproject/data/graph.tsv
         logging.info(f"WRITING TSV FILE TO {tsv_path}")
         relation_df[["start", "label", "end"]].to_csv(
             tsv_path, sep="\t", header=False, index=False
@@ -83,6 +84,7 @@ def convert_to_tsv(relation_df):
     except Exception as e:
         logging.info("error in converting to tsv")
         logging.info(e, exc_info=True)
+        sys.exit(e)
 
 
 # entry function
@@ -100,3 +102,4 @@ def preprocess_exported_data():
     except Exception as e:
         logging.info("error in preprocessing")
         logging.info(e, exc_info=True)
+        sys.exit(e)

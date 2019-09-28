@@ -4,6 +4,7 @@
 from embeoj.utils import connect_to_graphdb, load_config, logging
 from pathlib import os
 import json
+import sys
 
 graph_connection = connect_to_graphdb()
 
@@ -32,6 +33,7 @@ def create_folders():
     except Exception as e:
         logging.info("Could not create project directories")
         logging.info(e, exc_info=True)
+        sys.exit(e)
 
 
 def export_graph_to_json():
@@ -62,6 +64,7 @@ def export_graph_to_json():
         Also make sure apoc settings are configured in neo4j.conf"""
         )
         logging.info(e, exc_info=True)
+        sys.exit(e)
 
 
 def save_metafile_details(entities):
@@ -75,7 +78,7 @@ def save_metafile_details(entities):
         versions = list(range(int(GLOBAL_CONFIG["EPOCHS"])))  # final embedding version
         entity_filenames = [
             f"entity_names_{e}_{p}.json" for e in entities for p in partitions
-        ]  # entity filenames stored are in format : entity_names_0_0.json for number of partitions
+        ]  # entity filenames stored are in format : entity_names_entityname_0.json for number of partitions
         embedding_filenames = [
             f"embeddings_{e}_{p}.v{version}.json"
             for e in entities
@@ -146,9 +149,9 @@ def build_pbg_config():
         [dict] -- [config in PBG format]
     """
     try:
-        logging.info(f"""CREATING CONFIGURATION FILE ...... """)
+        logging.info(f"""CREATING CONFIGURATION FILE FOR TRAINING...... """)
         default_config = load_config("OPTIONAL_PBG_SETTINGS")
-        pbg_config = export_meta_data(graph_connection)
+        pbg_config = export_meta_data()
         pbg_config["num_epochs"] = GLOBAL_CONFIG["EPOCHS"]
         pbg_config["dimension"] = GLOBAL_CONFIG["EMBEDDING_DIMENSIONS"]
         pbg_config["entity_path"] = DATA_DIRECTORY
@@ -177,7 +180,6 @@ def save_pbg_config():
     """Saves the PBG config to the checkpoint directory
     """
     try:
-        logging.info(f"""SAVING CONFIGURATION FILE ...... """)
         pbg_config = build_pbg_config()
         model_path = os.path.join(
             CHECKPOINT_DIRECTORY, GLOBAL_CONFIG["PBG_CONFIG_NAME"]
@@ -189,6 +191,7 @@ def save_pbg_config():
     except Exception as e:
         logging.info("error in saving pbg config")
         logging.info(e, exc_info=True)
+        sys.exit(e)
 
 
 def export():
@@ -205,3 +208,4 @@ def export():
     except Exception as e:
         logging.info("error in export")
         logging.info(e, exc_info=True)
+        sys.exit(e)

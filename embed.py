@@ -53,16 +53,16 @@ def embed(config_path, project_name, url, username, password, task):
                 neo4j_password=password,
             )
 
-            export()
-            preprocess_exported_data()
-            convert_tsv_to_pbg()
-            train_embeddings()
-        else:
-            entity_name = "21621"
-            similarity_search(entity_name)
+            export()  # export graph data to tsv json file
+            preprocess_exported_data()  # convert to tsv file for biggraph to read
+            convert_tsv_to_pbg()  # process data files for training
+            train_embeddings()  # train
+            print("Done....")
+
     except Exception as e:
         print(f"Error: {e}")
 
 
 if __name__ == "__main__":
-    embed()
+    entity_name = "CAPTAIN AMERICA"
+    similarity_search(entity_name)
