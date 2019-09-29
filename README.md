@@ -7,7 +7,8 @@
 
 Graphs databases are a powerful way to represent real world data in a simple and intuitive manner They can effectively capture inherent relationships within the data and provide meaningful insights that cannot be obtained using traditional relational databases. 
 
-__Neo4j__ is a leading graph database platform with a great community support that offers great capabilities for storing and querying large scale enterprise data.
+__Neo4j__ is a leading graph database platform that offers great capabilities for storing and querying large scale enterprise data and can be easily scaled up to accomodate millions of nodes without hindering the performance. Moreover, it has great community support and a large number of plugins available for carrying out various tasks.
+Head over to their [official website](https://neo4j.com)
 
  
 ### WHAT ARE GRAPH EMBEDDINGS?
@@ -82,18 +83,41 @@ The command line interface takes the following parameters:
 
 - __url__ : The url to the neo4j database in the format of bolt(or http): // (ip of the database):(port number). By default the url is configured to __bolt://localhost:7687__ 
 
-You will be then prompted to enter the username and password to connect to the database.
+You will be then prompted to enter the __username__ and __password__ to connect to the database.
  
 - __config_path__: This is an optional parameter that specifies the path to a 'config.yml' file incase the default parameters are edited.
+
+To get all the parameters execute:
+`python embed.py --help`   
+
+To launch the training script for creating graph embeddings execute the following command from the project directory: 
+`python embed.py train --project_name=sampleproject --url=bolt://localhost:7687`
+
+This will create a folder called as sampleproject in the current directory which will store all the data and checkpoint files required.
+
+Once the training is done, the embeddings will be save to __sampleproject/model__ directory
 
 ### Similarity Search:
 
 A common task using graph embeddings is performing similarity search to return similar nodes which can then be used to find undiscovered relationships.
 
-PyEmbeo uses FAISS that is used for fast similarity searching for a large number of vectors. A similarity search can be triggered by passing the node id of a particular node (any even any other property can also be passed but it will be computationally heavy) along with the --task option in the command line interface.
-
+PyEmbeo uses FAISS that is used for fast similarity searching for a large number of vectors. A similarity search can be triggered by passing the node id of a particular node (any even any other property can also be passed but it will be computationally heavy)
 More Details can be found at: [official documentation](https://github.com/facebookresearch/faiss/wiki) or [this post](https://towardsdatascience.com/understanding-faiss-619bb6db2d1a) and [this post](https://medium.com/dotstar/understanding-faiss-part-2-79d90b1e5388)
 
+the similarity search script takes similar arguments like the training script along with a few extra ones:
+- __project_name__ : This is the root directory that will store the required data and embedding checkpoint files.
+
+- __url__ : The url to the neo4j database in the format of bolt(or http): // (ip of the database):(port number). By default the url is configured to __bolt://localhost:7687__ 
+
+- __node__: This specifies the node id of any node present in the graph.
+
+To get all the parameters execute:
+`python task.py --help`   
+
+The script first creates faiss indexes if they are not alread created and then returns n similar nodes for the given node(default n = 5 ) 
+
+To execute the similarity search task, exceute the following command from the project directory:
+`python task.py similarity --project_name=sampleproject --node=1234 --url=bolt://localhost:7687/`
 
 
 ## Storage format:
@@ -152,4 +176,3 @@ The similarity search parameters can also be tweaked accordingly:
 - **FAISS_INDEX_NAME**: The type of index to use for similarity searching . Defaults to IndexIVFFlat. Currently only the IVFFlat and FlatL2 index types are supported . see [index types](https://github.com/facebookresearch/faiss/wiki/Faiss-indexes) for details on type of indexes
 - **NEAREST_NEIGHBORS**: number of similar nodes to return. Defaults ti 5
 - **NUM_CLUSTER**: number of clusters that are created by the clustering algorithm while creating the index
-
