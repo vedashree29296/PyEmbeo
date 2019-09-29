@@ -1,23 +1,33 @@
 """Functions to export graph database to json format and create config file for PBG training
 """
 
-from embeoj.utils import connect_to_graphdb, load_config, logging
+from embeoj.utils import connect_to_graphdb, logging
 from pathlib import os
 import json
 import sys
 
 graph_connection = connect_to_graphdb()
+GLOBAL_CONFIG = None
+DATA_DIRECTORY = None
+CHECKPOINT_DIRECTORY = None
 
-GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
-cwd = os.getcwd()  # get current directory
-# default myproject/data
-DATA_DIRECTORY = os.path.join(
-    cwd, GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
-)
-# default myproject/model
-CHECKPOINT_DIRECTORY = os.path.join(
-    cwd, GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"]
-)
+
+def initialise_config():
+    from embeoj.utils import load_config
+
+    global GLOBAL_CONFIG
+    global DATA_DIRECTORY
+    global CHECKPOINT_DIRECTORY
+    GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
+    cwd = os.getcwd()  # get current directory
+    # default myproject/data
+    DATA_DIRECTORY = os.path.join(
+        cwd, GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
+    )
+    # default myproject/model
+    CHECKPOINT_DIRECTORY = os.path.join(
+        cwd, GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"]
+    )
 
 
 def create_folders():
@@ -149,6 +159,8 @@ def build_pbg_config():
         [dict] -- [config in PBG format]
     """
     try:
+        from embeoj.utils import load_config
+
         logging.info(f"""CREATING CONFIGURATION FILE FOR TRAINING...... """)
         default_config = load_config("OPTIONAL_PBG_SETTINGS")
         pbg_config = export_meta_data()
@@ -198,6 +210,7 @@ def export():
     """entry function for exporting graph data and creating PBG config.
     """
     try:
+        initialise_config()
         logging.info(
             "-------------------------PREPARING FOR DATA EXPORT------------------------"
         )

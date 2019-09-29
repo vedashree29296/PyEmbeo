@@ -3,21 +3,45 @@ import json
 from pathlib import os
 import h5py
 import numpy as np
-from embeoj.utils import load_config, logging, get_checkpoint_version
+from embeoj.utils import logging, get_checkpoint_version
 
 # graph_connection = connect_to_graphdb()
-SIMILARITY_SEARCH_CONFIG = load_config("SIMILARITY_SEARCH_CONFIG")
-GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
-DATA_DIRECTORY = os.path.join(
-    os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
-)
-CHECKPOINT_DIRECTORY = os.path.join(
-    os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"]
-)
-FAISS_INDEX_NAME = SIMILARITY_SEARCH_CONFIG["FAISS_INDEX_NAME"]
-EMBEDDING_DIMENSIONS = GLOBAL_CONFIG["EMBEDDING_DIMENSIONS"]
-NUM_CLUSTER = SIMILARITY_SEARCH_CONFIG["NUM_CLUSTER"]
-neighbors = SIMILARITY_SEARCH_CONFIG["NEAREST_NEIGHBORS"] + 1
+SIMILARITY_SEARCH_CONFIG = None
+GLOBAL_CONFIG = None
+DATA_DIRECTORY = None
+CHECKPOINT_DIRECTORY = None
+FAISS_INDEX_NAME = None
+EMBEDDING_DIMENSIONS = None
+NUM_CLUSTER = None
+neighbors = None
+
+
+def initialise_config():
+    from embeoj.utils import load_config
+
+    global SIMILARITY_SEARCH_CONFIG
+    global GLOBAL_CONFIG
+    global DATA_DIRECTORY
+    global CHECKPOINT_DIRECTORY
+    global FAISS_INDEX_NAME
+    global EMBEDDING_DIMENSIONS
+    global NUM_CLUSTER
+    global neighbors
+
+    SIMILARITY_SEARCH_CONFIG = load_config("SIMILARITY_SEARCH_CONFIG")
+    GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
+    DATA_DIRECTORY = os.path.join(
+        os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
+    )
+    CHECKPOINT_DIRECTORY = os.path.join(
+        os.getcwd(),
+        GLOBAL_CONFIG["PROJECT_NAME"],
+        GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"],
+    )
+    FAISS_INDEX_NAME = SIMILARITY_SEARCH_CONFIG["FAISS_INDEX_NAME"]
+    EMBEDDING_DIMENSIONS = GLOBAL_CONFIG["EMBEDDING_DIMENSIONS"]
+    NUM_CLUSTER = SIMILARITY_SEARCH_CONFIG["NUM_CLUSTER"]
+    neighbors = SIMILARITY_SEARCH_CONFIG["NEAREST_NEIGHBORS"] + 1
 
 
 def create_index_directory():
@@ -50,10 +74,11 @@ def create_faiss_index():
 
 
 def read_embeddings(entity_type, partition_number):
-    """[summary]
+    """Reads embeddings (.h5) files
 
     Arguments:
-        entity_file {[type]} -- [description]
+        entity_type {[str]} -- label of node
+        partition_number {[int]} -- partition in which the node lies
 
     Returns:
         [type] -- [description]
@@ -85,13 +110,13 @@ def load_index(index_path):
 
 
 def save_index(entity_type, partition_number):
-    """[summary]
+    """Saves the index file 
     
     Arguments:
-        entity_file {[type]} -- [description]
+        entity_file {[str]} -- Name of the entity files
     
     Returns:
-        [type] -- [description]
+        [type] -- created index
     """
     try:
         index_filename = f"index_{entity_type}_{partition_number}.index"
@@ -114,6 +139,7 @@ def save_index(entity_type, partition_number):
 
 def create_indexes():
     try:
+        initialise_config()
         logging.info(
             f"-------------------------CHECKING FOR INDEXES------------------------"
         )
@@ -145,6 +171,7 @@ def search_in_index(index_filename, query_entity_embedding):
 
 
 def search_all(entity_type, partition_number, query_index):
+    initialise_config()
     entity_file_list = []
     embeddings = read_embeddings(entity_type, partition_number)
     query_entity_embedding = embeddings[query_index, :]

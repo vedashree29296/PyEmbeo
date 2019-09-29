@@ -1,19 +1,15 @@
 import json
 from pathlib import os
-from embeoj.utils import load_config, logging, connect_to_graphdb
+from embeoj.utils import logging, connect_to_graphdb
 from embeoj.tasks.index import create_indexes, search_all
 import sys
 import re
 
-GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
-DATA_DIRECTORY = os.path.join(
-    os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
-)
-CHECKPOINT_DIRECTORY = os.path.join(
-    os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"]
-)
 
 graph_connection = connect_to_graphdb()
+DATA_DIRECTORY = None
+CHECKPOINT_DIRECTORY = None
+GLOBAL_CONFIG = None
 
 
 def find_node(entity_id):
@@ -122,6 +118,19 @@ def map_back_to_entities(entity_file_list, search_result, neighbors):
 
 def similarity_search(entity_id):
     try:
+        from embeoj.utils import load_config
+
+        global GLOBAL_CONFIG, DATA_DIRECTORY, CHECKPOINT_DIRECTORY
+        GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
+        DATA_DIRECTORY = os.path.join(
+            os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
+        )
+        CHECKPOINT_DIRECTORY = os.path.join(
+            os.getcwd(),
+            GLOBAL_CONFIG["PROJECT_NAME"],
+            GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"],
+        )
+
         create_indexes()  # create indexes if not present
         entity_details = find_entity_data(entity_id)
         entity_type = entity_details["entity_type"]

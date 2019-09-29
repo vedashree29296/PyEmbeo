@@ -2,17 +2,26 @@
 """
 import json
 import pandas as pd
-from embeoj.utils import load_config, logging
+from embeoj.utils import logging
 from pathlib import os
 import sys
 
-GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
-json_path = os.path.join(
-    os.getcwd(),
-    GLOBAL_CONFIG["PROJECT_NAME"],
-    GLOBAL_CONFIG["DATA_DIRECTORY"],
-    GLOBAL_CONFIG["JSON_EXPORT_FILE"] + ".json",
-)  # path to the json dump of the graph db
+GLOBAL_CONFIG = None
+json_path = None
+
+
+def initialise_config():
+    from embeoj.utils import load_config
+
+    global GLOBAL_CONFIG
+    global json_path
+    GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
+    json_path = os.path.join(
+        os.getcwd(),
+        GLOBAL_CONFIG["PROJECT_NAME"],
+        GLOBAL_CONFIG["DATA_DIRECTORY"],
+        GLOBAL_CONFIG["JSON_EXPORT_FILE"] + ".json",
+    )  # path to the json dump of the graph db
 
 
 def read_json_file():
@@ -92,6 +101,7 @@ def preprocess_exported_data():
     """entry function for converting graph export data in jsonl format to tsv format supported by PBG
     """
     try:
+        initialise_config()
         logging.info(
             "-------------------------PREPROCESSING DATA------------------------"
         )

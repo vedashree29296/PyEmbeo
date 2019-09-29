@@ -3,34 +3,51 @@
 from torchbiggraph.config import parse_config
 from torchbiggraph.converters.import_from_tsv import convert_input_data
 from torchbiggraph.train import train
-from embeoj.utils import load_config
 import json
 from pathlib import Path, os
 import sys
 import logging
 
 
-GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
-FILENAMES = {
-    "train": os.path.join(
-        os.getcwd(),
-        GLOBAL_CONFIG["PROJECT_NAME"],
-        GLOBAL_CONFIG["DATA_DIRECTORY"],
-        GLOBAL_CONFIG["TSV_FILE_NAME"] + ".tsv",
-    )
-}  # path to tsv file with train data
-DATA_DIRECTORY = os.path.join(
-    os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
-)
-CHECKPOINT_DIRECTORY = os.path.join(
-    os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"]
-)
-
 logger = logging.getLogger("torchbiggraph")  # log to stout
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler(sys.stdout)
 # handler.setFormatter(CustomLoggingFormatter())
 logging.basicConfig(handlers=[handler])
+
+
+GLOBAL_CONFIG = None
+DATA_DIRECTORY = None
+CHECKPOINT_DIRECTORY = None
+FILENAMES = None
+
+
+def initialise_config():
+    from embeoj.utils import load_config
+
+    global GLOBAL_CONFIG
+    global DATA_DIRECTORY
+    global CHECKPOINT_DIRECTORY
+    global FILENAMES
+    GLOBAL_CONFIG = load_config("GLOBAL_CONFIG")
+
+    FILENAMES = {
+        "train": os.path.join(
+            os.getcwd(),
+            GLOBAL_CONFIG["PROJECT_NAME"],
+            GLOBAL_CONFIG["DATA_DIRECTORY"],
+            GLOBAL_CONFIG["TSV_FILE_NAME"] + ".tsv",
+        )
+    }  # path to tsv file with train data
+    DATA_DIRECTORY = os.path.join(
+        os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], GLOBAL_CONFIG["DATA_DIRECTORY"]
+    )
+
+    CHECKPOINT_DIRECTORY = os.path.join(
+        os.getcwd(),
+        GLOBAL_CONFIG["PROJECT_NAME"],
+        GLOBAL_CONFIG["CHECKPOINT_DIRECTORY"],
+    )
 
 
 def load_pbg_config():
@@ -40,6 +57,8 @@ def load_pbg_config():
         [object] -- Config Schema object for the json file
     """
     try:
+        initialise_config()
+        logging.info(CHECKPOINT_DIRECTORY)
         pbg_config_path = os.path.join(
             CHECKPOINT_DIRECTORY, GLOBAL_CONFIG["PBG_CONFIG_NAME"]
         )
@@ -59,6 +78,7 @@ def convert_tsv_to_pbg():
     """Reads the tsv file for the graph data and related files are created for training graph embeddings.
     """
     try:
+        global FILENAMES
         logging.info(
             "-------------------------CREATING FILES FROM TSV FOR TRAINING------------------------"
         )
@@ -86,6 +106,8 @@ def merge_entity_name_files():
     This can then be used for other downstream tasks 
     """
     try:
+        global DATA_DIRECTORY
+        global GLOBAL_CONFIG
         metadata_path = os.path.join(
             os.getcwd(), GLOBAL_CONFIG["PROJECT_NAME"], "metadata.json"
         )  # read metadata
@@ -128,6 +150,7 @@ def train_embeddings():
         pbg_config {[object]} -- [config object]
     """
     try:
+        initialise_config()
         pbg_config = load_pbg_config()
         merge_entity_name_files()
         logging.info("-------------------------TRAINING------------------------")
