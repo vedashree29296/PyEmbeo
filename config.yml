@@ -10,9 +10,9 @@ GLOBAL_CONFIG:
   TRAIN_SPLIT: null
   TSV_FILE_NAME: graph
 GRAPH_DATABASE:
-  NEO4J_PASSWORD: test
-  NEO4J_URL: bolt://localhost:7687/
-  NEO4J_USER: neo4j
+  PASSWORD: test
+  URL: bolt://localhost:7687/
+  USERNAME: neo4j
 OPTIONAL_PBG_SETTINGS:
   background_io: false
   batch_size: 1000

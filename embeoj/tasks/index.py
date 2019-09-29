@@ -17,7 +17,7 @@ CHECKPOINT_DIRECTORY = os.path.join(
 FAISS_INDEX_NAME = SIMILARITY_SEARCH_CONFIG["FAISS_INDEX_NAME"]
 EMBEDDING_DIMENSIONS = GLOBAL_CONFIG["EMBEDDING_DIMENSIONS"]
 NUM_CLUSTER = SIMILARITY_SEARCH_CONFIG["NUM_CLUSTER"]
-neighbors = SIMILARITY_SEARCH_CONFIG["NEAREST_NEIGHBORS"]
+neighbors = SIMILARITY_SEARCH_CONFIG["NEAREST_NEIGHBORS"] + 1
 
 
 def create_index_directory():
@@ -139,7 +139,6 @@ def search_in_index(index_filename, query_entity_embedding):
         index_path = os.path.join(CHECKPOINT_DIRECTORY, "index", index_filename)
         index = load_index(index_path)
         distances, indices = index.search(query_entity_embedding, neighbors)
-        logging.info(f"{indices}, {distances}")
         return distances, indices
     except Exception as e:
         logging.info(f"{e}", exc_info=True)
@@ -154,7 +153,6 @@ def search_all(entity_type, partition_number, query_index):
         all_entity_dictionary = json.load(f)
     f.close()
     search_results = np.empty((0, 3))
-    logging.info(search_results.shape)
     for i, ent in enumerate(all_entity_dictionary["all_entities"]):
         try:
             partition_number = ent["partition_number"]
@@ -166,7 +164,6 @@ def search_all(entity_type, partition_number, query_index):
             indices = indices.reshape((-1, 1))
             list_id = np.array([i] * len(indices)).reshape(-1, 1)
             result = np.concatenate((indices, distances, list_id), axis=1)
-            logging.info(result.shape)
             search_results = np.vstack([search_results, result])
         except Exception as e:
             logging.info(f"Skipping search due to : {e}", exc_info=True)

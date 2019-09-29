@@ -1,13 +1,13 @@
 from embeoj.export import export
 from embeoj.preprocess import preprocess_exported_data
 from embeoj.train import convert_tsv_to_pbg, train_embeddings
-from embeoj.tasks.similarity_search import similarity_search
-from embeoj.utils import update_config, test_db_connection
+from embeoj.utils import update_config, test_db_connection, logging
 import click
+import sys
 
 
 @click.command()
-@click.option("--config_path", default=None, help="path to a yml configuration file")
+@click.argument("train")
 @click.option(
     "--project_name",
     default="myproject",
@@ -34,17 +34,17 @@ import click
     prompt=True,
     hide_input=True,
 )
-@click.option(
-    "--task", type=click.Choice(["train", "similarity_search"], case_sensitive=False)
-)
-def embed(config_path, project_name, url, username, password, task):
-    """Command line entry function for all the functions
+@click.option("--config_path", default=None, help="path to a yml configuration file")
+def embed(config_path, project_name, url, username, password, train):
+    """Command line interface for training and generating graph embeddings
     """
     try:
         # test run to check for db connection
         if not test_db_connection():
+            logging.info("could not connect to Neo4j")
+            sys.exit()
             return
-        if task == "train":
+        if train == "train":
             update_config(
                 config_path=config_path,
                 project_name=project_name,
@@ -52,17 +52,16 @@ def embed(config_path, project_name, url, username, password, task):
                 neo4j_user=username,
                 neo4j_password=password,
             )
-
             export()  # export graph data to tsv json file
             preprocess_exported_data()  # convert to tsv file for biggraph to read
             convert_tsv_to_pbg()  # process data files for training
             train_embeddings()  # train
-            print("Done....")
+            logging.info("Done....")
 
     except Exception as e:
-        print(f"Error: {e}")
+        logging.info(f"Error: {e}")
+        sys.exit(e)
 
 
 if __name__ == "__main__":
-    entity_name = "CAPTAIN AMERICA"
-    similarity_search(entity_name)
+    embed()

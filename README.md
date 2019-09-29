@@ -3,20 +3,19 @@
 ### (Graphs embeddings for Neo4j in Python)
 
 ## INTRODUCTION
-#### NEO4J
+### NEO4J
 
 Graphs databases are a powerful way to represent real world data in a simple and intuitive manner They can effectively capture inherent relationships within the data and provide meaningful insights that cannot be obtained using traditional relational databases. 
 
 __Neo4j__ is a leading graph database platform with a great community support that offers great capabilities for storing and querying large scale enterprise data.
 
  
-
-#### WHAT ARE GRAPH EMBEDDINGS?
+### WHAT ARE GRAPH EMBEDDINGS?
 Machine Learning on graph data has been the talk of the town for quite a while now. With the advantage of using graphs being quite evident; applying machine learning algorithms on graphs can be used for tasks such as graph analysis, link prediction, clustering etc.
 
 __Graph Embeddings__ are a way to encode the graph data as vectors that can effectively capture the structural information, such as the graph topology and the node to node relationships in the graph database. These embeddings can then be ingested by ML algorithms for performing various tasks
 
-#### HOW CAN GRAPH EMBEDDINGS BE USED?
+### HOW CAN GRAPH EMBEDDINGS BE USED?
 Graph embeddings can be used to perform various tasks including machine learning tasks.
 For example, embeddings of two nodes can be used to determine if a relationship can exist between them. Or, given a particular node and a relation, embeddings can be used to find similar nodes and rank them using similarity search algortihms
 Common applications include  __knowledge graph completion__ and __drug discovery__ where new relations can be dicovered between two nodes. __Link prediction__ and  __Recommendation systems__ in cases such as social networks analysis where potential new friendships can be found.
@@ -67,12 +66,13 @@ Also, ensure that the __APOC__ plugin for Neo4j is installed and configured for 
 
 `conda activate pyembeo`
 
-### Usage
+## Usage
 
 ***
-#### Training:
+### Training:
 
 PyEmbeo uses torchbiggraph to generate graph embeddings. PyTorch-BigGraph is a tool can create graph embeddings for very large, multi-realtional graphs without the need for computing resources such as GPUs.
+For more details,you can refer to the [PyTorch-BigGraph documentation](https://torchbiggraph.readthedocs.io/en/latest/index.html)
 
 The script uses the __config.yml__ file to configure all the training parameters. The file has been preconfigured with default parameters and only a minimal set of parameter need to be passed through the command line. However, the parameters can be tweaked by editing the config.yml file.
 
@@ -86,15 +86,17 @@ You will be then prompted to enter the username and password to connect to the d
  
 - __config_path__: This is an optional parameter that specifies the path to a 'config.yml' file incase the default parameters are edited.
 
-#### Similarity Search:
+### Similarity Search:
 
 A common task using graph embeddings is performing similarity search to return similar nodes which can then be used to find undiscovered relationships.
 
 PyEmbeo uses FAISS that is used for fast similarity searching for a large number of vectors. A similarity search can be triggered by passing the node id of a particular node (any even any other property can also be passed but it will be computationally heavy) along with the --task option in the command line interface.
 
+More Details can be found at: [official documentation](https://github.com/facebookresearch/faiss/wiki) or [this post](https://towardsdatascience.com/understanding-faiss-619bb6db2d1a) and [this post](https://medium.com/dotstar/understanding-faiss-part-2-79d90b1e5388)
 
 
-### Storage format:
+
+## Storage format:
 A root directory with the name given by the **--project_name** argument is created along with its subfolders:
 |-- my_project_name/  .
 
@@ -132,7 +134,7 @@ A root directory with the name given by the **--project_name** argument is creat
 
 **metadata.json**  stores data aboout the number of nodes, labels and types of relationships
 
-### Configuration Options:
+## Configuration Options:
 
 Default parameters can be overridden by editing or creating a config.yml file. Most of the parameters are used by torchbiggraph and more details about each can be found at :.........
 Some of the editable paramters list includes:
@@ -142,20 +144,12 @@ Some of the editable paramters list includes:
 
 - **NUM_PARTITIONS** : the number of partitions to divide the nodes into. This is used in torchbiggraph which will divide the nodes of a particular type. (defaults to 1)
 
-torchbiggraph uses the concept of operators and comparators for scoring while training the graph embeddings. More details can be found at: ............
+torchbiggraph uses the concept of operators and comparators for scoring while training the graph embeddings. More details can be found at: [comparators and operators](https://torchbiggraph.readthedocs.io/en/latest/scoring.html)
 - **operator** : can be 'none','diagonal','translation','complex_diagonal', 'affine' or 'linear' . Defaults to 'complex_diagonal'
 - **comparator** :can be 'dot','cos','l2','squared_l2'. Defaults to 'dot'
 
 The similarity search parameters can also be tweaked accordingly:
-- **FAISS_INDEX_NAME**: The type of index to use for similarity searching . Defaults to IndexIVFFlat. Currently only the IVFFlat and FlatL2 index types are supported see .......... for the types of indexes
+- **FAISS_INDEX_NAME**: The type of index to use for similarity searching . Defaults to IndexIVFFlat. Currently only the IVFFlat and FlatL2 index types are supported . see [index types](https://github.com/facebookresearch/faiss/wiki/Faiss-indexes) for details on type of indexes
 - **NEAREST_NEIGHBORS**: number of similar nodes to return. Defaults ti 5
 - **NUM_CLUSTER**: number of clusters that are created by the clustering algorithm while creating the index
-
-
-
-
-
-
-
-
 

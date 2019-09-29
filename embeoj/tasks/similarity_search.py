@@ -36,7 +36,6 @@ def find_node(entity_id):
             if not entity.empty:
                 entity = entity.iloc[0].to_dict()
                 entity["node"] = dict(entity["node"])
-                logging.info(f"ENTITY FOUND : {entity}")
                 return entity
         brute_query = f""" match (n)
         with n, [x in keys(n) WHERE n[x]="{entity_id}"] AS doesMatch
@@ -67,6 +66,7 @@ def find_entity_data(entity_id):
 
     try:
         entity = find_node(entity_id)
+        logging.info(f"ENTITY FOUND : {entity}")
         entity_type = entity["entity_type"]
         entity_id = str(entity["entity_id"])
         with open(os.path.join(DATA_DIRECTORY, "entity_dictionary.json"), "r") as f:
@@ -131,12 +131,13 @@ def similarity_search(entity_id):
         search_result, entity_file_list, neighbors = search_all(
             entity_type, partition_number, query_index
         )
-        logging.info(search_result)
-        logging.info(entity_file_list)
         all_similar_ents = map_back_to_entities(
             entity_file_list, search_result, neighbors
         )
-        logging.info(all_similar_ents)
+        logging.info("-----------SIMILAR NODES FOUND----------------")
+        for s in all_similar_ents:
+            logging.info(s)
+            logging.info("------------------------")
 
     except Exception as e:
         logging.error(f"Error in search : {e}", exc_info=True)

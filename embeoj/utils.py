@@ -41,9 +41,9 @@ def connect_to_graphdb():
     """
     try:
         graph_config = load_config("GRAPH_DATABASE")
-        url = graph_config["NEO4J_URL"]
-        username = graph_config["NEO4J_USER"]
-        password = graph_config["NEO4J_PASSWORD"]
+        url = graph_config["URL"]
+        username = graph_config["USERNAME"]
+        password = graph_config["PASSWORD"]
         graph_db = Graph(url, user=username, password=password)
         return graph_db
     except Exception as e:

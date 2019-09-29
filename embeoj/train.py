@@ -68,6 +68,7 @@ def convert_tsv_to_pbg():
             pbg_config.entities,
             pbg_config.relations,
             pbg_config.entity_path,
+            pbg_config.edge_paths,
             edge_paths,
             lhs_col=0,
             rhs_col=2,
