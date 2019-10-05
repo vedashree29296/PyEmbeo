@@ -50,6 +50,18 @@ Also, ensure that the __APOC__ plugin for Neo4j is installed and configured for 
 
 `apoc.import.file.use_neo4j_config=false`  .
 
+OR run the following commands if you want to use Docker based Neo4j image 
+
+Prerequisite: Docker needs to be installed and enabled
+
+```bash
+cd neo4j
+./download_apoc.sh # if running for the first time, this will download apoc jar file and create plugins folder
+./run.sh # to run Neo4j container in docker with APOC enabled
+./logs.sh # if you want to see container logs
+./stop.sh # to stop the container NOTE: the container instance will be removed but the data will persist in the neo4j/data folder.
+```
+
 
 #### STEPS FOR INSTALLATION:
 
