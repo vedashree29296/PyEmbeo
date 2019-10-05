@@ -112,3 +112,4 @@ data/
 model/
 examples/
 *.jar
+.DS_STORE
