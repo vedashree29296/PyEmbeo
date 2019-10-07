@@ -1,0 +1,4 @@
+FROM neo4j:3.5.11
+ENV NEO4JLABS_PLUGINS='["apoc", "graph-algorithms"]'
+EXPOSE 7474
+EXPOSE 7687
